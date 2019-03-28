@@ -1,0 +1,25 @@
+(1) 環境変数 HCC1_SRCDIR に hcc1 の src ディレクトリを指定します。
+    例: HCC1_SRCDIR=C:/User/hasegawa/20_hcc1/src
+
+(2) intel.dll のソースをダウンロードします。
+
+(3) 以下のようにして解凍します。
+
+    % bunzip2 -c intel_src.tar.bz2 | tar xf -
+
+(4) 30_intel/src ディレクトリにある intel.sln を Visual Studio で開いて
+    通常通りビルドします。
+
+(5) 動作確認方法
+
+    % cat sample.txt
+    int main(void)
+    {
+      printf("hello world\n");
+      return 0;
+    }
+    % $HCC1_SRCDIR/x64/Debug/hcc1.exe --generator x64/Debug/intel.dll sample.txt
+    % gcc -o a.out sample.s
+    % ./a.out
+    hello world
+    %

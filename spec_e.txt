@@ -1,0 +1,18 @@
+Specification memo
+
+(1) Just for verification of frontend. Ignore efficience of code. For
+
+    x := y op z
+
+    generate code which loads `y' to eax register, and generate simply like
+
+    op    z, %eax
+    store %eax, x
+
+(2) Outptu code shall be assembled by GNU assembler.
+
+(3) --x86 option can generate x86 code. By default generate x64 code.
+
+    % hcc1.exe --generator intel.dll sample.txt --generator-option \( --x86 \)
+
+(4) --ms option can generate code which can be assembled by Microsoft assembler.
