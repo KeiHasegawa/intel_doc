@@ -139,6 +139,57 @@ new, delete の呼び出しコードを生成するとリンクエラーを引き起こしてしまうため
 --ms モード
 main 函数を正しくコンパイルできていない. しょうがないのでテストでは main
 函数からテストプログラムの main 函数を呼び出すといったことをしている.
+
+main 函数で hello world を印字するプログラムのリンクで
+
+1>a.obj : error LNK2019: 未解決の外部シンボル __acrt_iob_func が関数 printf で参照されました
+1>a.obj : error LNK2019: 未解決の外部シンボル __local_stdio_printf_options が関数 printf で参照されました
+1>a.obj : error LNK2019: 未解決の外部シンボル __stdio_common_vfprintf が関数 printf で参照されました
+
+というエラーが出てしまう.
+
+cl.exe で通常通り hello world を印字するプログラムをコンパイルすると
+
+      __acrt_iob_func  ではなく
+      
+__imp___acrt_iob_func  らしい
+
+      __stdio_common_vfprintf ではなく
+
+__imp___stdio_common_vfprintf  らしい
+
+しかし __local_stdio_printf_options に関しては外部参照ではなくコンパイルした
+ファイルの中に定義が存在している.
+
+__acrt_iob_func は
+
+d:/Windows Kits/10/Include/10.0.17763.0/ucrt/corecrt_wstdio.h
+
+にその宣言があり
+
+_ACRTIMP_ALT FILE* __cdecl __acrt_iob_func(unsigned _Ix);
+
+のように書かれているがプリプロセスの結果は
+
+FILE*   __acrt_iob_func(unsigned _Ix);
+
+である. 同様に
+
+__stdio_common_vfprintf も
+
+d:/Windows Kits/10/Include/10.0.17763.0/ucrt/stdio.h
+
+にその宣言があり
+
+_ACRTIMP int __cdecl __stdio_common_vfprintf(
+
+のように書かれている.
+
+__local_stdio_printf_options に関しては
+
+D:/Windows Kits/10/Include/10.0.17763.0/ucrt/corecrt_stdio_config.h
+
+にその inline 定義があるが vs_header_conv.pl でこれを書き換えている.
 ---------------------------------------------------------------------
 reference_constant から派生したオブジェクトに対して, 以下のように, まとめて
 特定のメンバ函数を呼び出すコードが成立していない.
