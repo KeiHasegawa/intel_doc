@@ -1,140 +1,45 @@
---ms モード C++
-例外処理は未実装. 今後もおそらく実装できないと思われる.
-VC++ の cl.exe のオプションに /FAs のようにコンパイル結果を出力することが
-できるが, 残念ながらこの出力結果がそのままアセンブルすることができない.
-これができなければば解析もできない.
+--ms オプション例外処理
+x64, x86 両方でほぼ異なる実装が必要だったが文字列をスローしてキャッチする
+サンプルがなんとかパスしている.
 
-rtc$TMZ	SEGMENT
-_RTC_Shutdown.rtc$TMZ DQ FLAT:_RTC_Shutdown  ; . で構文エラー
-rtc$TMZ	ENDS
+しかしスローされた文字列のアドレスがどこに格納されるかが現状不明.
 
-hoge PROC
+x86 の場合 :
+
+t0 := here_info
 ...
-	lea	rcx, OFFSET FLAT:__C32237B3_Source@cpp  ; FLAT: で構文エラー
+p := catch_begin t0
 
-構文エラーの原因となる . を _ に書き換えて
-OFFSET FLAT: を OFFSET のように機械的に書き換えてみたが, アセンブルは
-正常終了するが, プログラムの動作が期待通りではない.
---------------------------------------------------------------------
---ms モード C++
-函数の外側の変数の初期化と終了ができていない. text$di, text$yd が期待通り
-動作していない.
+に対してやっていることは catch_begin のラベルを出しているだけ.
+p は ebp-24 に確保されているが, 偶然ここにスローされた文字列のアドレスが
+書き込まれている.
 
-ファイルスコープで
-int a = 123;
-int b = a;
+x64 の場合 :
 
-のようなコードがあった場合
-
-CRT$XCU SEGMENT
-?b$initializer@@xxxx DD initialize_for_b
-CRT$XCU ENDS
-
-text$di SEGMENT
-initialize_for_b PROC
-    push ebp
-    sub esp, 32
-    ....
-    ....
-    pop ebp
-    ret
-text$di ENDS
-
-のようにしてみたが動作しない. initialize_for_b が呼び出されることはない.
-
-
-x86 ビルドで最小と思われるプログラムを作ってみた
-
-	.model	flat
-
-PUBLIC	_mainCRTstartup
-_TEXT	SEGMENT
-_mainCRTStartup	PROC
-	call	func
-	mov	eax, 123
-	ret
-_mainCRTStartup ENDP
-_TEXT	ENDS
-_CRT SEGMENT READONLY DWORD ALIAS ( ".CRT$XCU" )
-	DWORD func
-_CRT	ENDS
-_TEXT	SEGMENT
-func	PROC
-	ret
-func	ENDP
-_TEXT	ENDS
-	END
-
-まぁ、うまくいっていない. func が _mainCRTStartup の前に呼ばれることはない.
-. から始まるセクション(セグメント)を宣言するにはこうするとよいらしいことは分かった.
-
-2020.09.12 16:03
-d:/tmp/Project6
-% cat aaa.cpp
-int a = 123;
-
-int b = a;
-
-int main()
-{
-	return 0;
+void f() {
+  try { g(); }
+  catch (const char* p) { h(p); }
 }
-% cat bbb.asm
-_CRT	SEGMENT ALIAS (".CRT$XCU")
-	DD	12H
-_CRT	ENDS
-	END
 
-これで aaa.obj と bbb.obj をリンクして実行すると、期待通り 0x12 番地に
-函数コールしようとしてエラーになっている.
+h(p) の部分は
 
-x86 のみ解決!!!
-2020.09.12 16:25
-d:/tmp/Project7
-% cat aaa.cpp
-int main()
-{
-	return 0;
-}
-% cat bbb.asm
-	.model	flat
+f のボディとは別に
 
-_TEXT	SEGMENT
-func	PROC
-	ret
-func	ENDP
-_TEXT	ENDS
+?catch$0@?0??f@@YAXXZ@4HA PROC	FRAME
+  ...
+?catch$0@?0??f@@YAXXZ@4HA ENDP
 
-_CRT	SEGMENT ALIAS (".CRT$XCU")
-	DD	func
-_CRT	ENDS
-	END
+のように別の函数で実行されるが, このときの rbp は f のボディの
+ものとは一致していない(謎).
 
-これで main 函数の前に func が呼ばれることを確認した. x86 のみ.
+p は hcxx1 の場合 rbp - 32 に 確保されている.
+p は cl の場合 rbp + 8 に確保されている.
 
-x64 は d:/tmp/Project9 で解決. x86 と少し異なる.
-% cat aaa.cpp
-int main()
-{
-	return 0;
-}
-% cat bbb.asm
-_TEXT	SEGMENT
-func	PROC
-	ret
-func	ENDP
-_TEXT	ENDS
-_CRT	SEGMENT READONLY ALIGN(8) ALIAS (".CRT$XCU")
-	DQ	func
-_CRT	ENDS
-	END
---------------------------------------------------------------------
---ms モード C++
-new, delete の呼び出しコードを生成するとリンクエラーを引き起こしてしまうため
-回避策として代わりに malloc, free を呼び出している
-
-=>
-2020.09.13 10:30 謎 d:/tmp/Project10 で試したところできている.
+cl で
+     lea	rbp, QWORD PTR [rdx+32]
+としている部分を
+     lea	rbp, QWORD PTR [rdx+72]
+として無理やりアドレスを合わせてパスしている状況.
 --------------------------------------------------------------------
 --ms モード
 main 函数を正しくコンパイルできていない. しょうがないのでテストでは main
@@ -199,11 +104,6 @@ reference_constant から派生したオブジェクトに対して, 以下のように, まとめて
 
 しょうがないので現状個別にメンバ函数を呼び出している.
 ---------------------------------------------------------------------
-例えば Linkages_of_identifiers/1_ok など
-
---ms 指定時の static 函数を正しくコンパイルできていない. Microsoft Assembler
-の仕様理解に問題あり.
--------------------------------------------------------------------
 3_Real_floating_and_integer/1_ok/test00{0,1,2}.c
 
 --ms --x86 指定時, 実行時に Floating point inexact result 例外が発生して
