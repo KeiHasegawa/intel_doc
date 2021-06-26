@@ -1,21 +1,21 @@
-�d�l�̃���
+仕様のメモ
 
-(1) �����܂ł��t�����g�G���h�̌��ؗp�B�R�[�h�����͖�������B
+(1) あくまでもフロントエンドの検証用。コード効率は無視する。
 
     x := y op z
 
-    �ɑ΂��āAy �� %eax �Ƀ��[�h����
+    に対して、y を %eax にロードして
 
     op    z, %eax
     store %eax, x
 
-    �̂悤�ȃR�[�h���𒼂ɏo�͂���B
+    のようなコードを愚直に出力する。
 
-(2) �o�͂����R�[�h�� GNU �̃A�Z���u���ŃA�Z���u���ł���悤�ɂ���B
+(2) 出力したコードは GNU のアセンブラでアセンブルできるようにする。
 
-(3) x86 �̃R�[�h�� --x86 �I�v�V�����ŏo�͂ł���悤�ɂ���B�ʏ�� x64 �̃R�[�h��
-    �o�͂���B
+(3) x86 のコードは --x86 オプションで出力できるようにする。通常は x64 のコードを
+    出力する。
 
     % hcc1.exe --generator intel.dll sample.txt --generator-option \( --x86 \)
 
-(4) --ms �I�v�V�������w�肵���ꍇ�� Microsoft �̃A�Z���u���ŃA�Z���u���ł���悤�ɂ���B
+(4) --ms オプションを指定した場合は Microsoft のアセンブラでアセンブルできるようにする。
